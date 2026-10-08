@@ -155,10 +155,29 @@ available in the app when the plugin is enabled.
 }
 
 .spreadsheet-error {
-    color: var(--text-error);
-    padding: 1em;
+    color: var(--text-normal);
+    padding: 0.6em 0.9em;
     border: 1px solid var(--background-modifier-error);
     border-radius: 4px;
     margin: 1em 0;
-    background-color: var(--background-modifier-error-hover);
+    background-color: var(--background-secondary);
+}
+
+/* --- Slash-menu / picker styling -------------------------------------- */
+
+.spreadsheet-suggest-create {
+    color: var(--text-accent);
+    font-weight: 600;
+}
+
+.spreadsheet-suggest-name {
+    font-weight: 500;
+}
+
+.spreadsheet-suggest-path {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

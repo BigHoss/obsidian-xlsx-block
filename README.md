@@ -86,11 +86,9 @@ Sheet1.csv(A1:B2; formatting=off)                           — csv, no cell sty
 | action | what it does |
 |---|---|
 | **Open in Excel** | hands the xlsx off to your OS default handler (Excel / Numbers / Sheets / WPS) |
-| **Load all sheets** | re-reads the file and renders every sheet as its own stacked sub-block, full range |
-| **Refresh** | re-reads the same range from disk (for when you edited the xlsx since Obsidian opened) |
-| **Use full range** | switches the current view to the worksheet's max range (auto-detected from `!ref`) |
-
-Clicking `Load all sheets` or `Refresh` does not change the note's source — just the rendered output. Reload the note to revert.
+| **Load all sheets** | re-reads the file, rewrites the code block source so every sheet renders as its own stacked sub-block (full range) — change persists, ctrl-Z to revert |
+| **Refresh** | re-reads the same range from disk (for when you edited the xlsx since Obsidian opened) — does not touch the source |
+| **Use full range** | switches the current view to the worksheet's max range (auto-detected from `!ref`) — does not touch the source |
 
 ## Limitations
 
