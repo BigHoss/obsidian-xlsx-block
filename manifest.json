@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-xlsx-block",
 	"name": "XLSX Block",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"minAppVersion": "1.4.0",
 	"description": "Embed live xlsx/csv tables in your notes. Multi-range, cell formatting, sticky header, refresh & open-in-Excel.",
 	"author": "Raphael",

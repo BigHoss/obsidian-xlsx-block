@@ -163,6 +163,19 @@ available in the app when the plugin is enabled.
     background-color: var(--background-secondary);
 }
 
+.spreadsheet-table .spreadsheet-file-link {
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.spreadsheet-table .spreadsheet-file-link:hover {
+    color: var(--text-accent);
+    text-decoration-style: solid;
+}
+
 /* --- Slash-menu / picker styling -------------------------------------- */
 
 .spreadsheet-suggest-create {

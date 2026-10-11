@@ -351,7 +351,7 @@ export default class SpreadsheetSyncPlugin extends Plugin {
 			sub.createEl('div', { text: `Sheet not found: ${sheetName}`, cls: 'spreadsheet-error' });
 			return;
 		}
-		this.renderTable(table, worksheet, range, options.formatting);
+		this.renderTable(table, worksheet, range, options.formatting, handle.ctx.sourcePath);
 	}
 
 	private renderTabbedBlock(
@@ -406,7 +406,7 @@ export default class SpreadsheetSyncPlugin extends Plugin {
 				sub.createEl('div', { text: `Sheet not found: ${sheetName}`, cls: 'spreadsheet-error' });
 				return;
 			}
-			this.renderTable(table, worksheet, range, options.formatting);
+			this.renderTable(table, worksheet, range, options.formatting, handle.ctx.sourcePath);
 		});
 	}
 
@@ -475,7 +475,7 @@ export default class SpreadsheetSyncPlugin extends Plugin {
 		if (oldScroll) oldScroll.empty();
 		const scroll = oldScroll || sub.createEl('div', { cls: 'spreadsheet-scroll' });
 		const table = scroll.createEl('table', { cls: 'spreadsheet-table' });
-		this.renderTable(table, worksheet, range, options.formatting);
+		this.renderTable(table, worksheet, range, options.formatting, handle.ctx.sourcePath);
 	}
 
 	private renderTable(
@@ -483,6 +483,7 @@ export default class SpreadsheetSyncPlugin extends Plugin {
 		worksheet: XLSX.WorkSheet,
 		range: SpreadsheetRange,
 		formattingOn: boolean,
+		sourcePath: string,
 	) {
 		const rangeInfo = XLSX.utils.decode_range(`${range.startCell}:${range.endCell}`);
 		const headerRow = rangeInfo.s.r;
@@ -495,12 +496,107 @@ export default class SpreadsheetSyncPlugin extends Plugin {
 				const cell = worksheet[cellRef];
 				const td = tr.createEl(isHeader ? 'th' : 'td');
 				if (cell?.v != null) {
-					td.textContent = String(cell.v);
+					this.renderCellContent(td, String(cell.v), sourcePath);
 				}
 				if (formattingOn && cell?.s) {
 					this.applyCellStyle(td, cell.s);
 				}
 			}
+		}
+	}
+
+	// Render a cell's text content, turning detected wikilinks and file paths
+	// into clickable anchors. Pipe-separated cells (`[[Wikilink]] | D:\path`)
+	// are split: wikilink first, file path second. Both pieces are best-effort —
+	// text that doesn't match either pattern is left as plain text.
+	private renderCellContent(td: HTMLElement, raw: string, sourcePath: string) {
+		const text = raw.trim();
+		if (!text) return;
+
+		const pipeIdx = text.indexOf(' | ');
+		const primary = (pipeIdx >= 0 ? text.substring(0, pipeIdx) : text).trim();
+		const secondary = (pipeIdx >= 0 ? text.substring(pipeIdx + 3) : '').trim();
+
+		const wikiMatch = primary.match(/^\[\[(.+?)\]\]$/);
+
+		if (wikiMatch) {
+			const name = wikiMatch[1];
+			const link = td.createEl('a', {
+				cls: 'internal-link',
+				text: name,
+				href: '#',
+			});
+			link.dataset.href = name;
+			link.addEventListener('click', (evt) => {
+				evt.preventDefault();
+				void this.app.workspace.openLinkText(name, sourcePath, false);
+			});
+		} else {
+			td.appendText(primary);
+		}
+
+		if (secondary) {
+			td.appendText(' | ');
+			if (this.isFilePath(secondary)) {
+				const link = td.createEl('a', {
+					cls: 'spreadsheet-file-link',
+					text: secondary,
+					href: '#',
+				});
+				link.title = secondary;
+				link.addEventListener('click', (evt) => {
+					evt.preventDefault();
+					void this.openFilePath(secondary, sourcePath);
+				});
+			} else {
+				td.appendText(secondary);
+			}
+		}
+	}
+
+	private isFilePath(s: string): boolean {
+		// Windows absolute: C:\ or C:/ or D:\ etc.
+		if (/^[A-Za-z]:[\\/]/.test(s)) return true;
+		// Unix absolute (but not UNC \\server — that's a different thing and we
+		// can't really open it anyway).
+		if (s.startsWith('/') && !s.startsWith('//')) return true;
+		// Home-relative.
+		if (s.startsWith('~/') || s === '~') return true;
+		// Current/parent relative.
+		if (s.startsWith('./') || s.startsWith('../')) return true;
+		return false;
+	}
+
+	private async openFilePath(filePath: string, sourcePath: string): Promise<void> {
+		// 1) Vault-relative path? Try opening as a vault file.
+		try {
+			const f = this.app.vault.getAbstractFileByPath(filePath);
+			if (f) {
+				await this.app.workspace.openLinkText(filePath, sourcePath, false);
+				return;
+			}
+		} catch {
+			// fall through
+		}
+
+		// 2) Hand off to the OS default app.
+		const app: AppWithFileOpen = this.app;
+		if (typeof app.openWithDefaultApp === 'function') {
+			try {
+				await app.openWithDefaultApp(filePath);
+				return;
+			} catch (err) {
+				console.error('SpreadsheetSync: openWithDefaultApp failed', err);
+			}
+		}
+
+		// 3) Last-resort: copy the path to clipboard + Notice so the user can paste
+		// it elsewhere (Files app, terminal, etc.).
+		try {
+			await navigator.clipboard.writeText(filePath);
+			new Notice(`Path copied to clipboard:\n${filePath}`);
+		} catch {
+			new Notice(`Could not open or copy: ${filePath}`);
 		}
 	}
 
